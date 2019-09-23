@@ -3,10 +3,8 @@ package com.vectormax.mobile.launcher
 import android.Manifest
 import android.app.Activity
 import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
-import java.io.File
 import android.widget.Toast
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
@@ -17,17 +15,20 @@ import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
 import com.livinglifetechway.quickpermissions_kotlin.runWithPermissions
 import android.content.pm.PackageManager
-import android.os.StrictMode
 import android.content.ActivityNotFoundException
 import androidx.core.content.FileProvider
 import android.content.ContentResolver
-import android.os.Environment
+import android.database.Cursor
 import androidx.core.app.ComponentActivity.ExtraData
 import androidx.core.content.ContextCompat.getSystemService
 import android.icu.lang.UCharacter.GraphemeClusterBreak.T
-import android.os.Build
+import android.os.*
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.runBlocking
+import java.io.*
+import java.net.URL
+import java.net.URLConnection
 
 
 class MainActivity : AppCompatActivity() {
@@ -41,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         if(!runAppIfInstalled()){
             beginDownload()
         }
+        Toast.makeText(this@MainActivity, "##### ID = "+Utils.getSkyworthDeviceId()+" #####", Toast.LENGTH_SHORT).show()
     }
 
     private fun runAppIfInstalled(): Boolean {
@@ -49,13 +51,15 @@ class MainActivity : AppCompatActivity() {
         if(isInstalled){
             val pm = getPackageManager()
             val launchIntent = pm.getLaunchIntentForPackage("com.vectormax.tvinput.kuali")
-            Log.d("shimi", "in isInstalled launchIntent = "+launchIntent.toString())
-            startActivity(launchIntent)
-            finish()
-            return true
-        }else {
-            return false
+            if(launchIntent != null){
+                Log.d("shimi", "in isInstalled launchIntent = "+launchIntent.toString())
+                startActivity(launchIntent)
+                finish()
+                return true
+            }
+
         }
+        return false
     }
 
     override fun onDestroy() {
@@ -80,17 +84,17 @@ class MainActivity : AppCompatActivity() {
      * Install APK using PackageInstaller
      * @param apkFile  File object of APK
      */
-    private fun installAPK(apkFile: File) = runWithPermissions(Manifest.permission.REQUEST_INSTALL_PACKAGES){//
+    private fun installAPK(apkFile: File) {//= runWithPermissions(Manifest.permission.REQUEST_INSTALL_PACKAGES)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!packageManager.canRequestPackageInstalls()) {
                 startActivityForResult(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).setData(Uri.parse(String.format("package:%s", getPackageName()))), 1234);
-                return@runWithPermissions
+                //return@runWithPermissions
             }
         }
-
+        apkFile.setReadable(true, false);
         val intent = Intent(Intent.ACTION_VIEW)
-        intent.addCategory(Intent.CATEGORY_DEFAULT)
+        //intent.addCategory(Intent.CATEGORY_DEFAULT)
         intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive")
         startActivityForResult(intent, 5555);
         val fileSize = Integer.parseInt((apkFile.length() / 1024).toString())
@@ -112,20 +116,37 @@ class MainActivity : AppCompatActivity() {
     private fun beginDownload() = runWithPermissions(Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE){
 
+        var urlString = "https://nyc.vectormax.com:4061/config/app-kuali-release.apk"
+
         val file = getApkFile()
         //val file = File(getExternalFilesDir(null), "kuali-apk.apk")
         val fileSize = Integer.parseInt((file.length() / 1024).toString())
         if(file.exists() && fileSize > 0 ){
             Log.d("shimi", "in file.exists()  = "+file.isDirectory+"  "+file.name+"  fileSize = "+fileSize)
-            installAPK(file)
+            downloadCompleted(getApkFile())
         }else{
+
+            if(true) {
+
+
+                AsyncTask.execute {
+                    Utils.downloadFile(urlString, file)
+                    runOnUiThread(Runnable {
+                        downloadCompleted(file)
+                    })
+                };
+                return@runWithPermissions
+            }
+
            /*
            Create a DownloadManager.Request with all the information necessary to start the download
            */
             val request =
-                DownloadManager.Request(Uri.parse("https://nyc.vectormax.com:4061/config/app-kuali-release.apk"))
+                DownloadManager.Request(Uri.parse(urlString))
                     .setTitle("Downloading App")// Title of the Download Notification
                     .setDescription("Downloading kuali app")// Description of the Download Notification
+                    .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI)
+
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)// Visibility of the download Notification
                     //.setDestinationUri(Uri.fromFile(file))// Uri of the destination file
                     //.setRequiresCharging(false)// Set if charging is required to begin the download
@@ -153,13 +174,42 @@ class MainActivity : AppCompatActivity() {
             //Checking if the received broadcast is for our enqueued download by matching download id
             Log.d("shimi", "in onReceive downloadID = "+downloadID +"   id = "+id)
 
-            if (downloadID == id) {
-                progressBar.visibility = View.GONE
-                Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
-                val file = getApkFile() //File(getExternalFilesDir(null), "kuali-apk.apk")
-                installAPK(file)
-            }
+//            if (downloadID < 1) {
+//                return;
+//            }
+//        val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+//
+//        // query download status
+//        val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadID));
+//        if (cursor.moveToFirst()) {
+//            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS));
+//            if(status == DownloadManager.STATUS_SUCCESSFUL){
+//
+//                // download is successful
+//                val uri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI));
+//                val file = File(Uri.parse(uri).getPath());
+//                installAPK(file)
+//            }
+//            else {
+//                // download is cancelled
+//            }
+//        }
+//        else {
+//            // download is cancelled
+//        }
+
+        if (downloadID == id) {
+            downloadCompleted(getApkFile())
         }
+        }
+    }
+
+    private fun downloadCompleted(apkFile: File) {
+        progressBar.visibility = View.GONE
+        Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
+        //val file = getApkFile() //File(getExternalFilesDir(null), "kuali-apk.apk")
+        Utils.installApk(apkFile)
+        //installAPK(apkFile)
     }
 
     /**
@@ -236,4 +286,5 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+
 }
