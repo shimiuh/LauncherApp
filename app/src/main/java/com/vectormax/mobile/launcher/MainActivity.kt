@@ -21,6 +21,7 @@ import android.os.StrictMode
 import android.content.ActivityNotFoundException
 import androidx.core.content.FileProvider
 import android.content.ContentResolver
+import android.database.Cursor
 import android.os.Environment
 import androidx.core.app.ComponentActivity.ExtraData
 import androidx.core.content.ContextCompat.getSystemService
@@ -31,6 +32,7 @@ import androidx.annotation.RequiresApi
 
 
 class MainActivity : AppCompatActivity() {
+    val defaultFileName:String="kuali.apk"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,7 +71,7 @@ class MainActivity : AppCompatActivity() {
 
         if (resultCode == 1234 && resultCode == Activity.RESULT_OK) {
             if (getPackageManager().canRequestPackageInstalls()) {
-                installAPK(getApkFile() )
+                installAPK(getApkFile(defaultFileName) )
             }
         } else if (resultCode == 5555 ) {
             runAppIfInstalled()
@@ -80,15 +82,13 @@ class MainActivity : AppCompatActivity() {
      * Install APK using PackageInstaller
      * @param apkFile  File object of APK
      */
-    private fun installAPK(apkFile: File) = runWithPermissions(Manifest.permission.REQUEST_INSTALL_PACKAGES){//
-
+    private fun installAPK(apkFile: File) {//
+        Log.d("shimi", "installAPK apkFile =  fileSize = ")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!packageManager.canRequestPackageInstalls()) {
                 startActivityForResult(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).setData(Uri.parse(String.format("package:%s", getPackageName()))), 1234);
-                return@runWithPermissions
             }
         }
-
         val intent = Intent(Intent.ACTION_VIEW)
         intent.addCategory(Intent.CATEGORY_DEFAULT)
         intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive")
@@ -112,7 +112,7 @@ class MainActivity : AppCompatActivity() {
     private fun beginDownload() = runWithPermissions(Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE){
 
-        val file = getApkFile()
+        val file = getApkFile( defaultFileName)
         //val file = File(getExternalFilesDir(null), "kuali-apk.apk")
         val fileSize = Integer.parseInt((file.length() / 1024).toString())
         if(file.exists() && fileSize > 0 ){
@@ -131,16 +131,16 @@ class MainActivity : AppCompatActivity() {
                     //.setRequiresCharging(false)// Set if charging is required to begin the download
                     .setAllowedOverMetered(true)// Set if download is allowed on Mobile network
                     .setAllowedOverRoaming(true)// Set if download is allowed on roaming network
-                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,"kuali.apk")
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, defaultFileName)
             val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             downloadID = downloadManager.enqueue(request)// downloadIDenqueue puts the download request in the queue.
             Log.d("shimi", "in beginDownload else  = "+downloadID)
         }
     }
 
-    private fun getApkFile(): File {
+    private fun getApkFile(fileName:String): File {
         val path = Environment.getExternalStorageDirectory().toString() + File.separator +
-                Environment.DIRECTORY_DOWNLOADS + File.separator + "kuali.apk"
+                Environment.DIRECTORY_DOWNLOADS + File.separator + fileName
         return File(path)
     }
 
@@ -152,12 +152,27 @@ class MainActivity : AppCompatActivity() {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
             //Checking if the received broadcast is for our enqueued download by matching download id
             Log.d("shimi", "in onReceive downloadID = "+downloadID +"   id = "+id)
-
+            var fileName:String=""
             if (downloadID == id) {
-                progressBar.visibility = View.GONE
-                Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
-                val file = getApkFile() //File(getExternalFilesDir(null), "kuali-apk.apk")
-                installAPK(file)
+            val  extras:Bundle = intent.getExtras()!!
+                val manager:DownloadManager= getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val q:DownloadManager.Query  =  DownloadManager.Query()
+            q.setFilterById(extras.getLong(DownloadManager.EXTRA_DOWNLOAD_ID));
+            val c:Cursor = manager.query(q);
+
+            if (c.moveToFirst()) {
+
+                var status:Int = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS));
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                var filePath:String = c.getString(c.getColumnIndex(DownloadManager.COLUMN_LOCAL_FILENAME));
+                fileName = filePath.substring( filePath.lastIndexOf('/')+1, filePath.length );
+                }
+            }
+            c.close()
+             progressBar.visibility = View.GONE
+            Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
+            val file = getApkFile(fileName) //File(getExternalFilesDir(null), "kuali-apk.apk")
+            installAPK(file)
             }
         }
     }
