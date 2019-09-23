@@ -21,6 +21,11 @@ import android.content.ActivityNotFoundException
 import androidx.core.content.FileProvider
 import android.content.ContentResolver
 import android.os.Environment
+import androidx.core.app.ComponentActivity.ExtraData
+import androidx.core.content.ContextCompat.getSystemService
+import android.icu.lang.UCharacter.GraphemeClusterBreak.T
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -57,8 +62,8 @@ class MainActivity : AppCompatActivity() {
         intent.addCategory("android.intent.category.DEFAULT")
         intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive")
         startActivity(intent)
-
-        Log.d("shimi", "installAPK apkFile = "+apkFile.absoluteFile)
+        val fileSize = Integer.parseInt((apkFile.length() / 1024).toString())
+        Log.d("shimi", "installAPK apkFile = "+apkFile.absoluteFile+"  fileSize = "+fileSize)
     }
 
     /**
@@ -74,7 +79,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun beginDownload() = runWithPermissions(Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE){
-        val file = File(getExternalFilesDir(null), "kuali-apk.apk")
+
+        val file = getApkFile()
+        //val file = File(getExternalFilesDir(null), "kuali-apk.apk")
         val fileSize = Integer.parseInt((file.length() / 1024).toString())
         if(file.exists() && fileSize > 0 ){
             Log.d("shimi", "in file.exists()  = "+file.isDirectory+"  "+file.name+"  fileSize = "+fileSize)
@@ -99,6 +106,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getApkFile(): File {
+        val path = Environment.getExternalStorageDirectory().toString() + File.separator +
+                Environment.DIRECTORY_DOWNLOADS + File.separator + "kuali.apk"
+        return File(path)
+    }
+
 
     private var downloadID: Long = 0
     private val onDownloadComplete = object : BroadcastReceiver() {
@@ -111,7 +124,7 @@ class MainActivity : AppCompatActivity() {
             if (downloadID == id) {
                 progressBar.visibility = View.GONE
                 Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
-                val file = File(getExternalFilesDir(null), "kuali-apk.apk")
+                val file = getApkFile() //File(getExternalFilesDir(null), "kuali-apk.apk")
                 installAPK(file)
             }
         }
