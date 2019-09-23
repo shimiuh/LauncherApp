@@ -159,13 +159,14 @@ class MainActivity : AppCompatActivity() {
             val q:DownloadManager.Query  =  DownloadManager.Query()
             q.setFilterById(extras.getLong(DownloadManager.EXTRA_DOWNLOAD_ID));
             val c:Cursor = manager.query(q);
-
             if (c.moveToFirst()) {
-
                 var status:Int = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS));
                 if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                var filePath:String = c.getString(c.getColumnIndex(DownloadManager.COLUMN_LOCAL_FILENAME));
-                fileName = filePath.substring( filePath.lastIndexOf('/')+1, filePath.length );
+                    val downloadFileLocalUri:String=c.getString(c.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
+                    if (downloadFileLocalUri != null) {
+                        val mFile = File(Uri.parse(downloadFileLocalUri).path!!)
+                        fileName=mFile.name
+                    }
                 }
             }
             c.close()
