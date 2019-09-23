@@ -1,6 +1,7 @@
 package com.vectormax.mobile.launcher
 
 import android.Manifest
+import android.app.Activity
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.content.Intent
@@ -24,8 +25,9 @@ import android.os.Environment
 import androidx.core.app.ComponentActivity.ExtraData
 import androidx.core.content.ContextCompat.getSystemService
 import android.icu.lang.UCharacter.GraphemeClusterBreak.T
-
-
+import android.os.Build
+import android.provider.Settings
+import androidx.annotation.RequiresApi
 
 
 class MainActivity : AppCompatActivity() {
@@ -36,6 +38,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         registerReceiver(onDownloadComplete,IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
+        if(!runAppIfInstalled()){
+            beginDownload()
+        }
+    }
+
+    private fun runAppIfInstalled(): Boolean {
+
         val isInstalled = isPackageInstalled("com.vectormax.tvinput.kuali", getPackageManager())
         if(isInstalled){
             val pm = getPackageManager()
@@ -43,8 +52,9 @@ class MainActivity : AppCompatActivity() {
             Log.d("shimi", "in isInstalled launchIntent = "+launchIntent.toString())
             startActivity(launchIntent)
             finish()
+            return true
         }else {
-            beginDownload()
+            return false
         }
     }
 
@@ -53,18 +63,40 @@ class MainActivity : AppCompatActivity() {
         unregisterReceiver(onDownloadComplete);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    override fun onActivityReenter(resultCode: Int, data: Intent?) {
+        super.onActivityReenter(resultCode, data)
+
+        if (resultCode == 1234 && resultCode == Activity.RESULT_OK) {
+            if (getPackageManager().canRequestPackageInstalls()) {
+                installAPK(getApkFile() )
+            }
+        } else if (resultCode == 5555 ) {
+            runAppIfInstalled()
+        }
+    }
+
     /**
      * Install APK using PackageInstaller
      * @param apkFile  File object of APK
      */
-    private fun installAPK(apkFile: File) {//= runWithPermissions(Manifest.permission.REQUEST_INSTALL_PACKAGES)
-        val intent = Intent("android.intent.action.VIEW")
-        intent.addCategory("android.intent.category.DEFAULT")
+    private fun installAPK(apkFile: File) = runWithPermissions(Manifest.permission.REQUEST_INSTALL_PACKAGES){//
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!packageManager.canRequestPackageInstalls()) {
+                startActivityForResult(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).setData(Uri.parse(String.format("package:%s", getPackageName()))), 1234);
+                return@runWithPermissions
+            }
+        }
+
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.addCategory(Intent.CATEGORY_DEFAULT)
         intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive")
-        startActivity(intent)
+        startActivityForResult(intent, 5555);
         val fileSize = Integer.parseInt((apkFile.length() / 1024).toString())
         Log.d("shimi", "installAPK apkFile = "+apkFile.absoluteFile+"  fileSize = "+fileSize)
     }
+
 
     /**
      * Uninstall APK using PackageInstaller
