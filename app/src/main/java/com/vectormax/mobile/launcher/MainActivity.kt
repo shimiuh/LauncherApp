@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     private fun runAppIfInstalled(): Boolean {
 
         val isInstalled = isPackageInstalled("com.vectormax.tvinput.kuali", getPackageManager())
+        Log.d("shimi", "in runAppIfInstalled isInstalled = " + isInstalled)
         if(isInstalled){
             val pm = getPackageManager()
             //val launchIntent = pm.getLaunchIntentForPackage("com.vectormax.tvinput.kuali")
@@ -83,7 +84,6 @@ class MainActivity : AppCompatActivity() {
      * @param apkFile  File object of APK
      */
     private fun installAPK(apkFile: File) {//
-        Log.d("shimi", "installAPK apkFile =  fileSize = ")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!packageManager.canRequestPackageInstalls()) {
                 startActivityForResult(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).setData(Uri.parse(String.format("package:%s", getPackageName()))), 1234);
