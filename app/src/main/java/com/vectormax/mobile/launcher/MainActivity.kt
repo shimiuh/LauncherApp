@@ -4,23 +4,18 @@ import android.Manifest
 import android.app.Activity
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.content.Intent
 import android.net.Uri
 import java.io.File
 import android.widget.Toast
 import android.app.DownloadManager
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.IntentFilter
+import android.content.*
 import android.util.Log
 import android.view.View
 import kotlinx.android.synthetic.main.activity_main.*
 import com.livinglifetechway.quickpermissions_kotlin.runWithPermissions
 import android.content.pm.PackageManager
 import android.os.StrictMode
-import android.content.ActivityNotFoundException
 import androidx.core.content.FileProvider
-import android.content.ContentResolver
 import android.database.Cursor
 import android.os.Environment
 import androidx.core.app.ComponentActivity.ExtraData
@@ -50,8 +45,13 @@ class MainActivity : AppCompatActivity() {
         val isInstalled = isPackageInstalled("com.vectormax.tvinput.kuali", getPackageManager())
         if(isInstalled){
             val pm = getPackageManager()
-            val launchIntent = pm.getLaunchIntentForPackage("com.vectormax.tvinput.kuali")
-            Log.d("shimi", "in isInstalled launchIntent = "+launchIntent.toString())
+            //val launchIntent = pm.getLaunchIntentForPackage("com.vectormax.tvinput.kuali")
+            val launchIntent  = Intent(Intent.ACTION_MAIN);
+                launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                val cn = ComponentName("com.vectormax.tvinput.kuali","com.vectormax.tvinput.ui.MainActivity");
+                launchIntent.setComponent(cn);
+
+            Log.d("shimi", "in isInstalled launchIntent = " + launchIntent.toString())
             startActivity(launchIntent)
             finish()
             return true
