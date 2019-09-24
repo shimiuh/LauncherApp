@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         val isInstalled = isPackageInstalled("com.vectormax.tvinput.kuali", getPackageManager())
         Log.d("shimi", "in runAppIfInstalled isInstalled = " + isInstalled)
         if(isInstalled){
-            val pm = getPackageManager()
+            //val pm = getPackageManager()
             //val launchIntent = pm.getLaunchIntentForPackage("com.vectormax.tvinput.kuali")
             val launchIntent  = Intent(Intent.ACTION_MAIN);
                 launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -66,17 +66,23 @@ class MainActivity : AppCompatActivity() {
         unregisterReceiver(onDownloadComplete);
     }
 
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        Log.d("shimi", "in onActivityResult requestCode  = "+requestCode+"  resultCode = "+resultCode)
+
+        if (requestCode == 1234 && resultCode == Activity.RESULT_OK) {
+            installAPK(getApkFile(defaultFileName))
+        } else if (requestCode == 5555 ) {
+            runAppIfInstalled()
+        }
+    }
+
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     override fun onActivityReenter(resultCode: Int, data: Intent?) {
         super.onActivityReenter(resultCode, data)
-
-        if (resultCode == 1234 && resultCode == Activity.RESULT_OK) {
-            if (getPackageManager().canRequestPackageInstalls()) {
-                installAPK(getApkFile(defaultFileName) )
-            }
-        } else if (resultCode == 5555 ) {
-            runAppIfInstalled()
-        }
     }
 
     /**
@@ -154,26 +160,27 @@ class MainActivity : AppCompatActivity() {
             Log.d("shimi", "in onReceive downloadID = "+downloadID +"   id = "+id)
             var fileName:String=""
             if (downloadID == id) {
-            val  extras:Bundle = intent.getExtras()!!
-                val manager:DownloadManager= getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val q:DownloadManager.Query  =  DownloadManager.Query()
-            q.setFilterById(extras.getLong(DownloadManager.EXTRA_DOWNLOAD_ID));
-            val c:Cursor = manager.query(q);
-            if (c.moveToFirst()) {
-                var status:Int = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS));
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    val downloadFileLocalUri:String=c.getString(c.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
-                    if (downloadFileLocalUri != null) {
-                        val mFile = File(Uri.parse(downloadFileLocalUri).path!!)
-                        fileName=mFile.name
-                    }
-                }
-            }
-            c.close()
-             progressBar.visibility = View.GONE
-            Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
-            val file = getApkFile(fileName) //File(getExternalFilesDir(null), "kuali-apk.apk")
-            installAPK(file)
+                installAPK(getApkFile(defaultFileName))
+//                val extras: Bundle = intent.getExtras()!!
+//                val manager:DownloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+//                val query :DownloadManager.Query  =  DownloadManager.Query()
+//                query.setFilterById(extras.getLong(DownloadManager.EXTRA_DOWNLOAD_ID));
+//                val c:Cursor = manager.query(query);
+//                if (c.moveToFirst()) {
+//                    var status:Int = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS));
+//                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+//                        val downloadFileLocalUri:String=c.getString(c.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
+//                        if (downloadFileLocalUri != null) {
+//                            val mFile = File(Uri.parse(downloadFileLocalUri).path!!)
+//                            fileName=mFile.name
+//                        }
+//                    }
+//                }
+//                c.close()
+//                 progressBar.visibility = View.GONE
+//                Toast.makeText(this@MainActivity, "Download Completed", Toast.LENGTH_SHORT).show()
+//                val file = getApkFile(fileName) //File(getExternalFilesDir(null), "kuali-apk.apk")
+//                installAPK(file)
             }
         }
     }
